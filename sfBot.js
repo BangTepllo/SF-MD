@@ -116,11 +116,15 @@ let _user = JSON.parse(fs.readFileSync('./src/data/user.json'))
 let _afk = JSON.parse(fs.readFileSync('./src/data/user/afk-user.json'))
 let hit = JSON.parse(fs.readFileSync('./src/total-hit-user.json'))
 let autosimi = JSON.parse(fs.readFileSync('./src/data/simi.json'))
+let ntlinkgc =JSON.parse(fs.readFileSync('./database/antilinkgc.json'));
+let ntilinkall =JSON.parse(fs.readFileSync('./database/antilinkall.json'));
 /* ~~~~~~~~~ DATA MEDIA ~~~~~~~~~ */
 const Vnsf = JSON.parse(fs.readFileSync('./src/media/vn.json'))
 const Stickersf = JSON.parse(fs.readFileSync('./src/media/sticker.json'))
 const Imagesf = JSON.parse(fs.readFileSync('./src/media/image.json'))
 const Videosf = JSON.parse(fs.readFileSync('./src/media/video.json'))
+const AntiLinkAll = m.isGroup ? ntilinkall.includes(from) : false
+const Antilinkgc = m.isGroup ? ntlinkgc.includes(m.chat) : false
 const totalFitur = () =>{
             var mytext = fs.readFileSync("./sfBot.js").toString()
             var numUpper = (mytext.match(/case '/g) || []).length;
@@ -240,6 +244,51 @@ module.exports = sf = async (sf, m, msg, chatUpdate, store) => {
                 quoted: m
             });
         };
+        /* ~~~~~~~~~~~ ANTILINK ~~~~~~~~~~~~~*/
+        if (Antilinkgc) {
+        if (budy.match(`chat.whatsapp.com`)) {
+        if (!isBotAdmins) return m.reply(`${mess.botAdmin}, to kick the person who send link`)
+        let gclink = (`https://chat.whatsapp.com/`+await sf.groupInviteCode(m.chat))
+        let isLinkThisGc = new RegExp(gclink, 'i')
+        let isgclink = isLinkThisGc.test(m.text)
+        if (isgclink) return sf.sendMessage(m.chat, {text: `\`\`\`「 Group Link Detected 」\`\`\`\n\nYou won't be kicked by a bot because what you send is a link to this group`})
+        if (isAdmins) return sf.sendMessage(m.chat, {text: `\`\`\`「 Group Link Detected 」\`\`\`\n\nAdmin has sent a link, admin is free to post any link`})
+        if (isCreator) return sf.sendMessage(m.chat, {text: `\`\`\`「 Group Link Detected 」\`\`\`\n\nOwner has sent a link, owner is free to post any link`})
+        kice = m.sender
+        await sf.sendMessage(m.chat,
+			    {
+			        delete: {
+			            remoteJid: m.chat,
+			            fromMe: false,
+			            id: m.key.id,
+			            participant: m.key.participant
+			        }
+			    })
+			sf.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
+			sf.sendMessage(from, {text:`\`\`\`「 Group Link Detected 」\`\`\`\n\n@${kice.split("@")[0]} Has been kicked because of sending group link in this group`, contextInfo:{mentionedJid:[kice]}}, {quoted:m})
+            }            
+        }
+        
+if (AntiLinkAll)
+   if (budy.includes("https://")){
+if (!isBotAdmins) return
+bvl = `\`\`\`「 Link Detected 」\`\`\`\n\nAdmin has sent a link, admin is free to send any link😇`
+if (isAdmins) return m.reply(bvl)
+if (m.key.fromMe) return m.reply(bvl)
+if (isCreator) return m.reply(bvl)
+        await sf.sendMessage(m.chat,
+			    {
+			        delete: {
+			            remoteJid: m.chat,
+			            fromMe: false,
+			            id: m.key.id,
+			            participant: m.key.participant
+			        }
+			    })
+			sf.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
+sf.sendMessage(from, {text:`\`\`\`「 Link Detected 」\`\`\`\n\n@${m.sender.split("@")[0]} Has been kicked because of sending link in this group`, contextInfo:{mentionedJid:[m.sender]}}, {quoted:m})
+} else {
+}
         /* ~~~~~~~~~ ALL SYSTEM BOT ~~~~~~~~~ */
         if (!sf.public) {
             if (!isCreator && !m.key.fromMe) return
@@ -2585,12 +2634,67 @@ let regex1 = /(?:https|git)(?::\/\/|@)github\.com[\/:]([^\/:]+)\/(.+)/i
     repo = repo.replace(/.git$/, '')
     let url = `https://api.github.com/repos/${user}/${repo}/zipball`
     let filename = (await fetch(url, {method: 'HEAD'})).headers.get('content-disposition').match(/attachment; filename=(.*)/)[1]
-    XeonBotInc.sendMessage(m.chat, { document: { url: url }, fileName: filename+'.zip', mimetype: 'application/zip' }, { quoted: m }).catch((err) => reply(mess.error))
+    sf.sendMessage(m.chat, { document: { url: url }, fileName: filename+'.zip', mimetype: 'application/zip' }, { quoted: m }).catch((err) => reply(mess.error))
 break
 //////////// SPOTIFY ////////////////
 
 //////////// ANTILINKK /////////////
-
+break
+case 'antilinkall': {
+if (!m.isGroup) return reply(mess.group)
+if (!isBotAdmins) return reply(mess.botAdmin)
+if (!isAdmins && !isCreator) return reply(mess.admin)
+if (args[0] === "on") {
+if (AntiLinkTwitter) return reply('Already activated')
+ntilinkall.push(from)
+fs.writeFileSync('./database/antilinkall.json', JSON.stringify(ntilinkall))
+reply('Success in turning on all antilink in this group')
+var groupe = await sf.groupMetadata(from)
+var members = groupe['participants']
+var mems = []
+members.map(async adm => {
+mems.push(adm.id.replace('c.us', 's.whatsapp.net'))
+})
+sf.sendMessage(from, {text: `\`\`\`「 ⚠️Warning⚠️ 」\`\`\`\n\nIf you're not an admin, don't send any link in this group or u will be kicked immediately!`, contextInfo: { mentionedJid : mems }}, {quoted:m})
+} else if (args[0] === "off") {
+if (!AntiLinkAll) return reply('Already deactivated')
+let off = ntilinkall.indexOf(from)
+ntilinkall.splice(off, 1)
+fs.writeFileSync('./database/antilinkall.json', JSON.stringify(ntilinkall))
+reply('Success in turning off all antilink in this group')
+} else {
+  await reply(`Please Type The Option\n\nExample: ${prefix + command} on\nExample: ${prefix + command} off\n\non to enable\noff to disable`)
+  }
+  }
+  break
+  
+case 'antilinkgc': {
+if (!m.isGroup) return reply(mess.group)
+if (!isBotAdmins) return reply(mess.botAdmin)
+if (!isAdmins && !isCreator) return reply(mess.admin)
+if (args[0] === "on") {
+if (Antilinkgc) return reply('Already activated')
+ntlinkgc.push(from)
+fs.writeFileSync('./database/antilinkgc.json', JSON.stringify(ntlinkgc))
+reply('Success in turning on antiwame in this group')
+var groupe = await sf.groupMetadata(from)
+var members = groupe['participants']
+var mems = []
+members.map(async adm => {
+mems.push(adm.id.replace('c.us', 's.whatsapp.net'))
+})
+sf.sendMessage(from, {text: `\`\`\`「 ⚠️Warning⚠️ 」\`\`\`\n\nNobody is allowed to send group link in this group, one who sends will be kicked immediately!`, contextInfo: { mentionedJid : mems }}, {quoted:m})
+} else if (args[0] === "off") {
+if (!Antilinkgc) return reply('Already deactivated')
+let off = ntlinkgc.indexOf(from)
+ntlinkgc.splice(off, 1)
+fs.writeFileSync('./database/antilinkgc.json', JSON.stringify(ntlinkgc))
+reply('Success in turning off antiwame in this group')
+} else {
+await reply(`Please Type The Option\n\nExample: ${prefix + command} on\nExample: ${prefix + command} off\n\non to enable\noff to disable`)
+  }
+  }
+  break
 //////////// ANIME
 case 'boruto':
 case 'minato':
@@ -2680,7 +2784,7 @@ ${readmore}
 │⋄ ${prefix}setppgc
 │⋄ ${prefix}tagall
 │⋄ ${prefix}antilink
-│⋄ ${prefix}antilink2
+│⋄ ${prefix}antilinkall
 │⋄ ${prefix}hidetag
 │⋄ ${prefix}totag
 │⋄ ${prefix}gruop *[option]*
